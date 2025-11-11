@@ -168,8 +168,12 @@ export function translateCommand(
 }
 
 function translateStatusCommand(args: Array<string>): CommandTranslation {
-  // Sapling uses -Tjson, git uses --porcelain=v2 or custom format
-  const newArgs = args.filter(arg => !arg.startsWith('-Tjson'));
+  // Sapling uses -Tjson and --copies, git uses --porcelain=v2
+  // Filter out Sapling-specific flags
+  const newArgs = args.filter(arg => 
+    !arg.startsWith('-Tjson') && 
+    arg !== '--copies'
+  );
   
   if (args.includes('-Tjson')) {
     return {
@@ -203,25 +207,26 @@ function translateLogCommand(args: Array<string>, ctx: RepositoryContext): Comma
     }
   }
 
-  // For smartlog-style viewing, use git log since git-branchless smartlog has no JSON output
-  // We'll use git log with custom format and let ISL's existing parsing handle it
-  if (!revset || revset.includes('smartlog') || revset.includes('stack')) {
-    // Use git log with graph to show the commit tree
-    // ISL expects specific template output which we need to match
-    const gitFormat = template ? convertSaplingTemplateToGitFormat(template) : '%H%x00%P%x00%an%x00%ae%x00%at%x00%s%x00%b%x00%D';
+  // For smartlog-style viewing or any log with template
+  // Generate git format that matches ISL's expected template output
+  if (!revset || revset.includes('smartlog') || revset.includes('stack') || template) {
+    // Create a git format string that produces output matching Sapling's template
+    // The parseCommitInfoOutput expects lines separated by newlines, ending with COMMIT_END_MARK
+    // We need to match the exact format from mainFetchTemplateFields
+    const gitFormat = createGitFormatForIslTemplate();
+    
     return {
       command: 'git',
-      args: ['log', '--graph', '--all', `--format=${gitFormat}`, '--date-order'],
-      transformOutput: transformGitLogToIslFormat,
+      args: ['log', '--all', `--format=${gitFormat}`, '--date-order', ...otherArgs],
+      // Don't transform - git output should already match expected format
     };
   }
 
-  // For regular log, use git log with custom format
-  const gitFormat = convertSaplingTemplateToGitFormat(template);
+  // For regular log without template, use simple format
+  const gitFormat = '%H%x00%P%x00%an%x00%ae%x00%at%x00%s';
   return {
     command: 'git',
     args: ['log', `--format=${gitFormat}`, revset || 'HEAD', ...otherArgs],
-    transformOutput: template ? undefined : undefined, // May need transformation
   };
 }
 
@@ -395,6 +400,45 @@ function transformGitConflictsToJson(output: string): string {
       status: 'unresolved',
     })),
   });
+}
+
+/**
+ * Create a git format string that matches ISL's expected template output.
+ * ISL expects commits separated by newlines with COMMIT_END_MARK at the end.
+ * Each commit should have fields in a specific order matching mainFetchTemplateFields.
+ */
+function createGitFormatForIslTemplate(): string {
+  const COMMIT_END_MARK = '<<COMMIT_END_MARK>>';
+  const NULL_CHAR = '%x00';
+  
+  // Format string matching the order of mainFetchTemplateFields:
+  // hash, title, author, date, phase, bookmarks, remoteBookmarks, parents,
+  // grandparents, isDot, files, totalFileCount, successorInfo, closestPredecessors,
+  // diffId, isFollower, stableCommitMetadata, description
+  
+  const format = [
+    '%H',                           // hash
+    '%s',                           // title (subject = first line of message)
+    '%an',                          // author name
+    '%cI',                          // committer date ISO 8601
+    'public',                       // phase (git doesn't have this, use 'public' for all)
+    '%D' + NULL_CHAR,               // bookmarks (branches/tags)
+    '',                             // remoteBookmarks (empty for now)
+    '%P' + NULL_CHAR,               // parents (space-separated, convert to null-separated)
+    '',                             // grandparents (not easy to get in git, leave empty)
+    '',                             // isDot (will be @ if this is HEAD, empty otherwise)
+    '',                             // files (empty for now, too expensive)
+    '0',                            // totalFileCount (0 for now)
+    '',                             // successorInfo (git doesn't have mutations)
+    '',                             // closestPredecessors (git doesn't have this)
+    '',                             // diffId (empty for now)
+    '{}',                           // isFollower (empty JSON object)
+    '',                             // stableCommitMetadata (empty)
+    '%B',                           // description (full commit message body)
+    COMMIT_END_MARK,
+  ].join('%n');  // %n is newline in git format
+  
+  return format;
 }
 
 function convertSaplingTemplateToGitFormat(template: string): string {
