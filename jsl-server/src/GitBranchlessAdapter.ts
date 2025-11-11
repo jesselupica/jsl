@@ -120,10 +120,7 @@ export function translateCommand(
 
     // Diff command
     case 'diff':
-      return {
-        command: 'git',
-        args: ['diff', ...rest],
-      };
+      return translateDiffCommand(rest, ctx);
 
     // Show command (for viewing commits)
     case 'show':
@@ -338,6 +335,34 @@ function translateBookmarkCommand(args: Array<string>): CommandTranslation {
   return {
     command: 'git',
     args: branchArgs,
+  };
+}
+
+function translateDiffCommand(args: Array<string>, ctx: RepositoryContext): CommandTranslation {
+  // Handle diff command with proper argument ordering
+  // Sapling uses -c for context, git needs it before other args
+  
+  const contextArgs: string[] = [];
+  const otherArgs: string[] = [];
+  
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '-c' && args[i + 1]) {
+      // -c is a git global option, needs to come before subcommand
+      // But in our case it's already after 'diff', so treat it as --context
+      contextArgs.push('--context', args[i + 1]);
+      i++;
+    } else if (args[i] === '-X' && args[i + 1]) {
+      // -X for exclude pattern - git uses --exclude
+      otherArgs.push(`--exclude=${args[i + 1]}`);
+      i++;
+    } else {
+      otherArgs.push(args[i]);
+    }
+  }
+  
+  return {
+    command: 'git',
+    args: ['diff', ...contextArgs, ...otherArgs],
   };
 }
 
