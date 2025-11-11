@@ -64,10 +64,7 @@ export function translateCommand(
 
     // Checkout/goto command
     case 'goto':
-      return {
-        command: 'git',
-        args: ['checkout', ...rest],
-      };
+      return translateGotoCommand(rest, ctx);
 
     // Rebase command
     case 'rebase':
@@ -155,6 +152,21 @@ export function translateCommand(
         command: 'git',
         args: ['branchless', 'smartlog', ...rest],
         usesGitBranchless: true,
+      };
+
+    // Debug commands - these are Sapling-specific and optional
+    case 'debuggitmodules':
+      // Return empty result for git submodules query
+      return {
+        command: 'echo',
+        args: ['[]'],  // Empty JSON array
+      };
+
+    case 'debugcommitmessage':
+      // Return empty commit message template
+      return {
+        command: 'echo',
+        args: [''],  // Empty string
       };
 
     default:
@@ -283,6 +295,34 @@ function translateBookmarkCommand(args: Array<string>): CommandTranslation {
   return {
     command: 'git',
     args: ['branch', ...args],
+  };
+}
+
+function translateGotoCommand(args: Array<string>, ctx: RepositoryContext): CommandTranslation {
+  // Handle goto with --rev flag and revsets
+  // sl goto --rev <revset> → git checkout <commit-hash>
+  
+  let target = args[0] || 'HEAD';
+  
+  // Check for --rev flag
+  const revIndex = args.indexOf('--rev');
+  if (revIndex !== -1 && args[revIndex + 1]) {
+    target = args[revIndex + 1];
+  }
+  
+  // Strip Sapling revset functions (we can't evaluate them in git)
+  // max(successors(hash)) → hash
+  // For now, just extract the hash from common patterns
+  target = target
+    .replace(/max\(successors\(([^)]+)\)\)/g, '$1')  // max(successors(hash)) → hash
+    .replace(/successors\(([^)]+)\)/g, '$1')         // successors(hash) → hash
+    .replace(/predecessors\(([^)]+)\)/g, '$1')       // predecessors(hash) → hash
+    .replace(/max\(([^)]+)\)/g, '$1')                // max(expr) → expr
+    .replace(/min\(([^)]+)\)/g, '$1');               // min(expr) → expr
+  
+  return {
+    command: 'git',
+    args: ['checkout', target],
   };
 }
 
