@@ -56,11 +56,13 @@ After installation, run: git branchless init`,
       encoding: 'utf-8',
       timeout: 5000,
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: process.env,
     });
     
-    const versionMatch = output.match(/git-branchless\s+(\d+\.\d+\.\d+)/);
+    // Output can be "git-branchless 0.10.0" or "git-branchless-opts 0.10.0"
+    const versionMatch = output.match(/git-branchless(-\w+)?\s+(\d+\.\d+\.\d+)/);
     if (versionMatch) {
-      status.version = versionMatch[1];
+      status.version = versionMatch[2];
       status.installed = true;
     }
   } catch (error) {
@@ -94,6 +96,7 @@ Install via:
       encoding: 'utf-8',
       timeout: 5000,
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: process.env,
     });
     
     const versionMatch = output.match(/git version (\d+\.\d+\.\d+)/);
@@ -133,6 +136,7 @@ Without Watchman, JSL will use slower polling to detect changes.`,
       encoding: 'utf-8',
       timeout: 5000,
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: process.env,
     });
     
     const versionMatch = output.match(/(\d+\.\d+\.\d+)/);
@@ -194,6 +198,66 @@ export async function validateRequiredDependencies(logger?: Logger): Promise<voi
     ].join('\n');
     
     throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Check if git-branchless is initialized in a repository
+ */
+export async function isGitBranchlessInitialized(repoRoot: string): Promise<boolean> {
+  try {
+    execSync('git config branchless.mainBranch', {
+      cwd: repoRoot,
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: process.env,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Initialize git-branchless in a repository
+ */
+export async function initializeGitBranchless(repoRoot: string, logger?: Logger): Promise<void> {
+  logger?.info('Initializing git-branchless in repository...');
+  
+  try {
+    // Run git branchless init with auto-accept flags
+    execSync('git branchless init --uninstall && git branchless init --main-branch main', {
+      cwd: repoRoot,
+      encoding: 'utf-8',
+      stdio: 'inherit',
+      env: process.env,
+    });
+    
+    logger?.info('✓ git-branchless initialized successfully');
+  } catch (error) {
+    logger?.error('Failed to initialize git-branchless:', error);
+    throw new Error(
+      'Failed to initialize git-branchless. Please run manually:\n' +
+      `  cd ${repoRoot}\n` +
+      '  git branchless init'
+    );
+  }
+}
+
+/**
+ * Ensure git-branchless is initialized, initializing if needed
+ */
+export async function ensureGitBranchlessInitialized(
+  repoRoot: string,
+  logger?: Logger,
+): Promise<void> {
+  const initialized = await isGitBranchlessInitialized(repoRoot);
+  
+  if (!initialized) {
+    logger?.info('git-branchless not initialized in this repository');
+    await initializeGitBranchless(repoRoot, logger);
+  } else {
+    logger?.info('✓ git-branchless already initialized');
   }
 }
 

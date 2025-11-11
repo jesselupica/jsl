@@ -43,6 +43,7 @@ import type {KindOfChange, PollKind} from './WatchForChanges';
 import type {TrackEventName} from './analytics/eventNames';
 import type {ConfigLevel, ResolveCommandConflictOutput} from './commands';
 import type {RepositoryContext} from './serverTypes';
+import {ensureGitBranchlessInitialized} from './DependencyChecker';
 
 import {Set as ImSet} from 'immutable';
 import {
@@ -560,6 +561,14 @@ export class Repository {
         codeReviewSystem = {type: 'unknown', path: pathsDefault};
       }
       pullRequestDomain = configs.get('github.pull_request_domain');
+    }
+
+    // Ensure git-branchless is initialized in this repository
+    try {
+      await ensureGitBranchlessInitialized(repoRoot, logger);
+    } catch (error) {
+      logger.error('Failed to initialize git-branchless:', error);
+      // Continue anyway - some features may not work but basic viewing should
     }
 
     const result: RepoInfo = {

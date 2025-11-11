@@ -203,13 +203,16 @@ function translateLogCommand(args: Array<string>, ctx: RepositoryContext): Comma
     }
   }
 
-  // For smartlog-style viewing, prefer git-branchless but fallback to regular git log
+  // For smartlog-style viewing, use git log since git-branchless smartlog has no JSON output
+  // We'll use git log with custom format and let ISL's existing parsing handle it
   if (!revset || revset.includes('smartlog') || revset.includes('stack')) {
+    // Use git log with graph to show the commit tree
+    // ISL expects specific template output which we need to match
+    const gitFormat = template ? convertSaplingTemplateToGitFormat(template) : '%H%x00%P%x00%an%x00%ae%x00%at%x00%s%x00%b%x00%D';
     return {
       command: 'git',
-      args: ['branchless', 'smartlog', '--json'],
-      usesGitBranchless: true,
-      transformOutput: transformGitBranchlessSmartlogToIslFormat,
+      args: ['log', '--graph', '--all', `--format=${gitFormat}`, '--date-order'],
+      transformOutput: transformGitLogToIslFormat,
     };
   }
 
@@ -369,16 +372,11 @@ function transformGitStatusToJson(output: string): string {
   return JSON.stringify(files);
 }
 
-function transformGitBranchlessSmartlogToIslFormat(output: string): string {
-  // Transform git-branchless smartlog JSON to ISL format
-  // This will need significant work to match ISL's expected format
-  try {
-    const data = JSON.parse(output);
-    // TODO: Transform git-branchless format to ISL commit format
-    return output;
-  } catch {
-    return output;
-  }
+function transformGitLogToIslFormat(output: string): string {
+  // Transform git log --graph output to match ISL's template format
+  // ISL uses templates.ts to parse this, so we need to match the expected format
+  // For now, pass through - the templates.ts parser should handle standard git log format
+  return output;
 }
 
 function transformGitBlameToJson(output: string): string {
