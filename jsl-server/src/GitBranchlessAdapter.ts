@@ -632,7 +632,7 @@ function markHeadCommit(output: string): string {
 
 /**
  * Parse git %D output into local and remote branches
- * Input: "HEAD -> main, origin/main, tag: v1.0"
+ * Input: "HEAD -> main, origin/main, tag: v1.0" or just "main"
  * Output: {localBranches: ['main'], remoteBranches: ['origin/main']}
  */
 function parseGitRefs(refsString: string): {localBranches: string[]; remoteBranches: string[]} {
@@ -643,20 +643,19 @@ function parseGitRefs(refsString: string): {localBranches: string[]; remoteBranc
     return {localBranches, remoteBranches};
   }
   
-  // Split by comma
-  const refs = refsString.split(',').map(r => r.trim());
+  // Remove null char if present
+  const cleaned = refsString.replace(/\0/g, '');
   
-  for (const ref of refs) {
+  // Split by comma
+  const refs = cleaned.split(',').map(r => r.trim());
+  
+  for (let ref of refs) {
     // Skip empty refs
     if (!ref) continue;
     
-    // Skip "HEAD ->" prefix
+    // Handle "HEAD ->" prefix - extract the branch name
     if (ref.startsWith('HEAD -> ')) {
-      const branch = ref.substring('HEAD -> '.length);
-      if (branch && !remoteBranches.includes(branch)) {
-        localBranches.push(branch);
-      }
-      continue;
+      ref = ref.substring('HEAD -> '.length).trim();
     }
     
     // Skip tags for now (ISL uses tags differently)
@@ -664,12 +663,15 @@ function parseGitRefs(refsString: string): {localBranches: string[]; remoteBranc
       continue;
     }
     
-    // Check if it's a remote branch (contains /)
+    // Check if it's a remote branch (contains / like origin/main)
     if (ref.includes('/')) {
-      remoteBranches.push(ref);
+      // Remote branch
+      if (!remoteBranches.includes(ref)) {
+        remoteBranches.push(ref);
+      }
     } else {
       // Local branch
-      if (!localBranches.includes(ref)) {
+      if (ref && !localBranches.includes(ref)) {
         localBranches.push(ref);
       }
     }
