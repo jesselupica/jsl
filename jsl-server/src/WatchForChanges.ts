@@ -132,7 +132,9 @@ export class WatchForChanges {
 
     // Resolve the repo dot dir in case it is a symlink. Watchman doesn't follow symlinks,
     // so we must follow it and watch the target.
-    const realDotdir = await fs.realpath(dotdir);
+    // Make sure dotdir is absolute by joining with repoRoot if needed
+    const absoluteDotdir = path.isAbsolute(dotdir) ? dotdir : path.join(repoRoot, dotdir);
+    const realDotdir = await fs.realpath(absoluteDotdir);
 
     if (realDotdir != dotdir) {
       this.logger.info(`resolved dotdir ${dotdir} to ${realDotdir}`);

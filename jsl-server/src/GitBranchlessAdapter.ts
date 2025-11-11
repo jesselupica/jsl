@@ -146,10 +146,7 @@ export function translateCommand(
 
     // Config commands
     case 'config':
-      return {
-        command: 'git',
-        args: ['config', ...rest],
-      };
+      return translateConfigCommand(rest, ctx);
 
     // Smartlog - use git-branchless
     case 'smartlog':
@@ -278,6 +275,54 @@ function translateBookmarkCommand(args: Array<string>): CommandTranslation {
   return {
     command: 'git',
     args: ['branch', ...args],
+  };
+}
+
+function translateConfigCommand(args: Array<string>, ctx: RepositoryContext): CommandTranslation {
+  // Handle -Tjson flag (Sapling-specific)
+  const hasTJson = args.includes('-Tjson');
+  
+  if (hasTJson) {
+    // Remove -Tjson and get the config sections
+    const sections = args.filter(arg => arg !== '-Tjson');
+    
+    // Git doesn't have -Tjson, we need to get configs individually
+    // For now, return empty JSON array since we can't easily replicate Sapling's behavior
+    // The code will handle missing configs gracefully
+    return {
+      command: 'git',
+      args: ['config', '--list'],
+      transformOutput: (output) => {
+        // Parse git config --list output and filter to requested sections
+        const lines = output.split('\n').filter(l => l.trim());
+        const configs: Array<{name: string; value: string}> = [];
+        
+        for (const line of lines) {
+          const [name, ...valueParts] = line.split('=');
+          if (!name) continue;
+          
+          // Check if this config matches any requested section
+          const matchesSection = sections.length === 0 || sections.some(section => 
+            name.startsWith(section + '.')
+          );
+          
+          if (matchesSection) {
+            configs.push({
+              name,
+              value: valueParts.join('='),
+            });
+          }
+        }
+        
+        return JSON.stringify(configs);
+      },
+    };
+  }
+  
+  // Regular config command (set, get, etc.)
+  return {
+    command: 'git',
+    args: ['config', ...args],
   };
 }
 
