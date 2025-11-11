@@ -89,11 +89,21 @@ export function calculateHourDifference(date1: Date, date2: Date): number {
 }
 
 /**
- * Check if a commit is on the master branch
+ * Check if a commit is on the master/main branch
  */
 export function isCommitMaster(commit: CommitInfo): boolean {
-  if (commit.remoteBookmarks == null) {
-    return false;
-  }
-  return commit.remoteBookmarks.some(bookmark => bookmark.includes('master'));
+  // Check both local and remote bookmarks for master/main
+  const bookmarksToCheck = [
+    ...(commit.bookmarks ?? []),
+    ...(commit.remoteBookmarks ?? []),
+  ];
+  
+  return bookmarksToCheck.some(bookmark => 
+    bookmark === 'main' || 
+    bookmark === 'master' || 
+    bookmark === 'origin/main' || 
+    bookmark === 'origin/master' ||
+    bookmark.includes('/main') ||
+    bookmark.includes('/master')
+  );
 }

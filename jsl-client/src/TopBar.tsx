@@ -15,6 +15,7 @@ import {BookmarksManagerMenu} from './BookmarksManager';
 import {BugButton} from './BugButton';
 import {BulkActionsMenu} from './BulkActionsMenu';
 import serverAPI from './ClientToServerAPI';
+import {CreateBranchButton} from './CreateBranchButton';
 import {CwdSelector} from './CwdSelector';
 import {DownloadCommitsTooltipButton} from './DownloadCommitsMenu';
 import {FocusModeToggle} from './FocusMode';
@@ -44,6 +45,7 @@ export function TopBar() {
         {canPush && <PullButton />}
         <CwdSelector />
         <DownloadCommitsTooltipButton />
+        <CreateBranchButton />
         <ShelvedChangesMenu />
         <BulkActionsMenu />
         <BookmarksManagerMenu />
