@@ -1,0 +1,25 @@
+# VSCode extension packaging ignore file
+# These files won't be included in the packaged .vsix
+
+# Source files (we ship compiled dist/)
+src/**
+tsconfig.json
+*.md
+
+# Build artifacts
+*.map
+
+# Development
+node_modules/**
+.vscode/**
+.gitignore
+
+# Tests
+test/**
+*.test.ts
+*.test.js
+
+# Documentation
+README.md
+module.md
+

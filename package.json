@@ -6,6 +6,7 @@
   "workspaces": [
     "jsl-client",
     "jsl-server",
+    "jsl-vscode",
     "shared",
     "components"
   ],

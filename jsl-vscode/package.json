@@ -1,0 +1,119 @@
+{
+  "name": "jsl-vscode",
+  "displayName": "JSL - Interactive Git SmartLog",
+  "description": "Visual git repository manager with stack support via git-branchless",
+  "version": "0.1.0",
+  "publisher": "jsl",
+  "icon": "resources/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/jsl.git"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "git",
+    "smartlog",
+    "git-branchless",
+    "visualization",
+    "interactive",
+    "vcs"
+  ],
+  "activationEvents": [
+    "onCommand:jsl.open",
+    "workspaceContains:.git"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "jsl.open",
+        "title": "JSL: Open Interactive SmartLog",
+        "category": "JSL",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "jsl.refresh",
+        "title": "JSL: Refresh",
+        "category": "JSL",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "jsl.checkDependencies",
+        "title": "JSL: Check Dependencies",
+        "category": "JSL"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "jsl",
+          "title": "JSL SmartLog",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "jsl": [
+        {
+          "id": "jsl.smartlog",
+          "name": "SmartLog",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "JSL",
+      "properties": {
+        "jsl.gitCommand": {
+          "type": "string",
+          "default": "git",
+          "description": "Path to git executable"
+        },
+        "jsl.gitBranchlessCommand": {
+          "type": "string",
+          "default": "git-branchless",
+          "description": "Path to git-branchless executable"
+        },
+        "jsl.autoOpen": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically open JSL when opening a git repository"
+        },
+        "jsl.serverPort": {
+          "type": "number",
+          "default": 0,
+          "description": "Port for JSL server (0 = random port)"
+        },
+        "jsl.useWatchman": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use Watchman for efficient file watching if available"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^16.7.13",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^2.19.0",
+    "typescript": "5.5.4"
+  },
+  "dependencies": {
+    "jsl-server": "0.0.0"
+  }
+}
+
