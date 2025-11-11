@@ -622,14 +622,19 @@ function markHeadCommit(output: string): string {
       }
       
       // Parse line 5 (%D output) to separate local and remote branches
-      // Format: "HEAD -> main, origin/main, tag: v1.0"
+      // Format: "HEAD -> main, origin/main, tag: v1.0" or just "main"
       const refsLine = lines[5];
-      if (refsLine && refsLine.trim()) {
+      if (refsLine && refsLine.trim() && refsLine.trim() !== '\0') {
         const {localBranches, remoteBranches} = parseGitRefs(refsLine);
         // Line 5 = local bookmarks (null-terminated)
-        lines[5] = localBranches.join('\0') + (localBranches.length ? '\0' : '');
+        // Only add trailing null if there are branches
+        lines[5] = localBranches.length > 0 ? localBranches.join('\0') + '\0' : '';
         // Line 6 = remote bookmarks (null-terminated)
-        lines[6] = remoteBranches.join('\0') + (remoteBranches.length ? '\0' : '');
+        lines[6] = remoteBranches.length > 0 ? remoteBranches.join('\0') + '\0' : '';
+      } else {
+        // No refs, ensure both lines are empty
+        lines[5] = '';
+        lines[6] = '';
       }
       
       // Add file count (line 11)
@@ -664,15 +669,20 @@ function parseGitRefs(refsString: string): {localBranches: string[]; remoteBranc
   const localBranches: string[] = [];
   const remoteBranches: string[] = [];
   
-  if (!refsString || refsString === '\0') {
+  // Clean up the input
+  if (!refsString) {
     return {localBranches, remoteBranches};
   }
   
-  // Remove null char if present
-  const cleaned = refsString.replace(/\0/g, '');
+  // Remove null chars and trim whitespace
+  const cleaned = refsString.replace(/\0/g, '').trim();
+  
+  if (!cleaned) {
+    return {localBranches, remoteBranches};
+  }
   
   // Split by comma
-  const refs = cleaned.split(',').map(r => r.trim());
+  const refs = cleaned.split(',').map(r => r.trim()).filter(r => r);
   
   for (let ref of refs) {
     // Skip empty refs
@@ -681,6 +691,8 @@ function parseGitRefs(refsString: string): {localBranches: string[]; remoteBranc
     // Handle "HEAD ->" prefix - extract the branch name
     if (ref.startsWith('HEAD -> ')) {
       ref = ref.substring('HEAD -> '.length).trim();
+      // If nothing left after removing prefix, skip
+      if (!ref) continue;
     }
     
     // Skip tags for now (ISL uses tags differently)
