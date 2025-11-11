@@ -24,28 +24,113 @@ Communication between client and server uses GraphQL over WebSocket.
 
 ## Prerequisites
 
-- Node.js 18+
-- Git
-- [git-branchless](https://github.com/arxanas/git-branchless) installed and on PATH
+### Required
+
+1. **Node.js 18+**
+   ```bash
+   node --version  # Should be v18 or higher
+   ```
+
+2. **Git 2.30+**
+   ```bash
+   git --version
+   ```
+
+3. **git-branchless 0.7.0+** ⚠️ **REQUIRED**
+   
+   git-branchless is **required** for JSL to function. It provides the smartlog visualization and stack management that makes JSL valuable.
+   
+   **macOS**:
+   ```bash
+   brew install git-branchless
+   ```
+   
+   **Linux**:
+   ```bash
+   cargo install --locked git-branchless
+   # Or download binary from: https://github.com/arxanas/git-branchless/releases
+   ```
+   
+   **Windows**:
+   ```bash
+   # Download binary from: https://github.com/arxanas/git-branchless/releases
+   ```
+   
+   **Verify**:
+   ```bash
+   git branchless --version
+   ```
+   
+   **Initialize in your repository**:
+   ```bash
+   cd /path/to/your/repo
+   git branchless init
+   ```
+
+### Optional
+
+4. **Watchman** (Recommended for performance)
+   ```bash
+   brew install watchman  # macOS
+   ```
+   
+   Without Watchman, JSL uses polling (slower but works).
 
 ## Getting Started
 
-```bash
-# Install dependencies
-npm install
+### 1. Install External Dependencies
 
-# Build the server
+**Critical**: JSL will not start without git-branchless!
+
+```bash
+# macOS
+brew install git-branchless
+
+# Verify installation
+git branchless --version
+
+# Initialize in your repository
+cd /path/to/your/repo
+git branchless init
+```
+
+See [DEPENDENCIES.md](DEPENDENCIES.md) for detailed installation instructions for all platforms.
+
+### 2. Install Node Dependencies
+
+```bash
+npm install --legacy-peer-deps
+```
+
+### 3. Build the Server
+
+```bash
 npm run build:server
-
-# Start development
-npm run dev
 ```
 
-In another terminal:
+### 4. Start JSL
+
+**Option A: Production Mode (Recommended for first run)**
 ```bash
-# Start the client
-npm run client
+cd jsl-server
+npm run serve
 ```
+
+Then open the URL it prints (e.g., http://localhost:3001/?token=...)
+
+**Option B: Development Mode (For active development)**
+
+Terminal 1:
+```bash
+npm run dev  # or cd jsl-server && npm run watch
+```
+
+Terminal 2:
+```bash
+npm run client  # or cd jsl-client && npm start
+```
+
+Then open http://localhost:3000
 
 ## Development
 

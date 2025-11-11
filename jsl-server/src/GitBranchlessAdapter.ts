@@ -203,7 +203,7 @@ function translateLogCommand(args: Array<string>, ctx: RepositoryContext): Comma
     }
   }
 
-  // For smartlog-style viewing, use git-branchless
+  // For smartlog-style viewing, prefer git-branchless but fallback to regular git log
   if (!revset || revset.includes('smartlog') || revset.includes('stack')) {
     return {
       command: 'git',

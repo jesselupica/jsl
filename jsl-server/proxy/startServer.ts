@@ -350,6 +350,21 @@ export async function runProxyMain(args: Args) {
     errorAndExit(HELP_MESSAGE, 0);
   }
 
+  // Check for required dependencies before starting server
+  // Import here to avoid circular dependencies
+  const {checkDependencies} = await import('../src/DependencyChecker.js');
+  const depCheck = await checkDependencies();
+  
+  if (!depCheck.allRequired) {
+    const missingNames = depCheck.missingRequired.map(d => d.name).join(', ');
+    errorAndExit(
+      `\nJSL is missing required dependencies: ${missingNames}\n\n` +
+      depCheck.missingRequired.map(dep => 
+        `${dep.name}:\n${dep.installInstructions}`
+      ).join('\n\n')
+    );
+  }
+
   const cwd = args.cwd ?? process.cwd();
 
   function info(...args: Parameters<typeof console.log>): void {
