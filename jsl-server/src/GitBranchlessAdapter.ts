@@ -596,6 +596,7 @@ function transformGitShowToChangedFilesFormat(output: string): string {
 function markHeadCommit(output: string): string {
   // Mark the HEAD commit with @ symbol in the isDot field
   // Also parse %D output to separate local and remote branches
+  // Determine phase (public vs draft) based on main branch
   
   try {
     const {execSync} = require('child_process');
@@ -604,6 +605,54 @@ function markHeadCommit(output: string): string {
       cwd: process.cwd(),
       env: process.env,
     }).trim();
+    
+    // Get the main branch name from git-branchless config
+    let mainBranch = 'main';
+    try {
+      const branchlessConfig = execSync('git config branchless.core.mainBranch', {
+        encoding: 'utf-8',
+        cwd: process.cwd(),
+        env: process.env,
+      }).trim();
+      if (branchlessConfig) {
+        mainBranch = branchlessConfig;
+      }
+    } catch {
+      // If git-branchless config not found, try to detect main/master
+      try {
+        execSync('git rev-parse --verify main', {
+          encoding: 'utf-8',
+          cwd: process.cwd(),
+          env: process.env,
+        });
+        mainBranch = 'main';
+      } catch {
+        try {
+          execSync('git rev-parse --verify master', {
+            encoding: 'utf-8',
+            cwd: process.cwd(),
+            env: process.env,
+          });
+          mainBranch = 'master';
+        } catch {
+          // Default to main if neither exists
+          mainBranch = 'main';
+        }
+      }
+    }
+    
+    // Get all commits reachable from main branch (these are "public")
+    let publicCommits = new Set<string>();
+    try {
+      const publicHashes = execSync(`git rev-list ${mainBranch}`, {
+        encoding: 'utf-8',
+        cwd: process.cwd(),
+        env: process.env,
+      }).trim().split('\n').filter((h: string) => h);
+      publicCommits = new Set(publicHashes);
+    } catch {
+      // If we can't get main commits, all commits will be draft
+    }
     
     // Split into commits
     const commits = output.split('<<COMMIT_END_MARK>>');
@@ -615,6 +664,10 @@ function markHeadCommit(output: string): string {
       
       // First line is the hash
       const commitHash = lines[0];
+      
+      // Line 4 = phase: determine if commit is public or draft
+      // Public = reachable from main branch, Draft = not reachable from main
+      lines[4] = publicCommits.has(commitHash) ? 'public' : 'draft';
       
       // If this is HEAD, mark line 9 (isDot field) with @
       if (commitHash === headHash) {
@@ -644,7 +697,7 @@ function markHeadCommit(output: string): string {
           encoding: 'utf-8',
           cwd: process.cwd(),
           env: process.env,
-        }).trim().split('\n').filter(l => l.trim()).length;
+        }).trim().split('\n').filter((l: string) => l.trim()).length;
         lines[11] = fileCount.toString();
       } catch {
         lines[11] = '0'; // Keep default if command fails
