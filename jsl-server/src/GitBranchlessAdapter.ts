@@ -241,7 +241,7 @@ function translateLogCommand(args: Array<string>, ctx: RepositoryContext): Comma
     return {
       command: 'git',
       args: ['log', '--all', `--format=${gitFormat}`, '--date-order', ...otherArgs],
-      // Don't transform - git output should already match expected format
+      transformOutput: markHeadCommit, // Mark HEAD commit with @
     };
   }
 
@@ -294,6 +294,7 @@ function translateBlameCommand(args: Array<string>): CommandTranslation {
 
 function translateBookmarkCommand(args: Array<string>): CommandTranslation {
   // Bookmarks in Sapling = Branches in Git
+  
   if (args.includes('--list-subscriptions')) {
     // This is a Sapling-specific feature, return empty for now
     return {
@@ -303,9 +304,40 @@ function translateBookmarkCommand(args: Array<string>): CommandTranslation {
     };
   }
   
+  // Parse bookmark create/move command
+  // sl bookmark <name> -r <rev> → git branch <name> <rev>
+  // sl bookmark -f <name> -r <rev> → git branch -f <name> <rev>
+  
+  let name = '';
+  let rev = '';
+  let force = false;
+  const otherArgs: string[] = [];
+  
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '-r' || args[i] === '--rev') {
+      rev = args[i + 1] || '';
+      i++; // Skip next arg
+    } else if (args[i] === '-f' || args[i] === '--force') {
+      force = true;
+    } else if (args[i] === '-d' || args[i] === '--delete') {
+      // Delete bookmark
+      otherArgs.push('--delete');
+    } else if (!args[i].startsWith('-')) {
+      name = args[i];
+    } else {
+      otherArgs.push(args[i]);
+    }
+  }
+  
+  const branchArgs = ['branch'];
+  if (force) branchArgs.push('-f');
+  branchArgs.push(...otherArgs);
+  if (name) branchArgs.push(name);
+  if (rev) branchArgs.push(rev);
+  
   return {
     command: 'git',
-    args: ['branch', ...args],
+    args: branchArgs,
   };
 }
 
@@ -536,6 +568,116 @@ function transformGitShowToChangedFilesFormat(output: string): string {
   ].join('\n');
 }
 
+function markHeadCommit(output: string): string {
+  // Mark the HEAD commit with @ symbol in the isDot field
+  // Also parse %D output to separate local and remote branches
+  
+  try {
+    const {execSync} = require('child_process');
+    const headHash = execSync('git rev-parse HEAD', {
+      encoding: 'utf-8',
+      cwd: process.cwd(),
+      env: process.env,
+    }).trim();
+    
+    // Split into commits
+    const commits = output.split('<<COMMIT_END_MARK>>');
+    const marked = commits.map(commit => {
+      if (!commit.trim()) return commit;
+      
+      const lines = commit.split('\n');
+      if (lines.length < 10) return commit;
+      
+      // First line is the hash
+      const commitHash = lines[0];
+      
+      // If this is HEAD, mark line 9 (isDot field) with @
+      if (commitHash === headHash) {
+        lines[9] = '@';
+      }
+      
+      // Parse line 5 (%D output) to separate local and remote branches
+      // Format: "HEAD -> main, origin/main, tag: v1.0"
+      const refsLine = lines[5];
+      if (refsLine && refsLine.trim()) {
+        const {localBranches, remoteBranches} = parseGitRefs(refsLine);
+        // Line 5 = local bookmarks (null-terminated)
+        lines[5] = localBranches.join('\0') + (localBranches.length ? '\0' : '');
+        // Line 6 = remote bookmarks (null-terminated)
+        lines[6] = remoteBranches.join('\0') + (remoteBranches.length ? '\0' : '');
+      }
+      
+      // Add file count (line 11)
+      // Use git diff-tree to count files changed in this commit
+      try {
+        const fileCount = execSync(`git diff-tree --no-commit-id --name-only -r ${commitHash}`, {
+          encoding: 'utf-8',
+          cwd: process.cwd(),
+          env: process.env,
+        }).trim().split('\n').filter(l => l.trim()).length;
+        lines[11] = fileCount.toString();
+      } catch {
+        lines[11] = '0'; // Keep default if command fails
+      }
+      
+      return lines.join('\n');
+    });
+    
+    return marked.join('<<COMMIT_END_MARK>>');
+  } catch (error) {
+    // If we can't get HEAD, just return unchanged
+    return output;
+  }
+}
+
+/**
+ * Parse git %D output into local and remote branches
+ * Input: "HEAD -> main, origin/main, tag: v1.0"
+ * Output: {localBranches: ['main'], remoteBranches: ['origin/main']}
+ */
+function parseGitRefs(refsString: string): {localBranches: string[]; remoteBranches: string[]} {
+  const localBranches: string[] = [];
+  const remoteBranches: string[] = [];
+  
+  if (!refsString || refsString === '\0') {
+    return {localBranches, remoteBranches};
+  }
+  
+  // Split by comma
+  const refs = refsString.split(',').map(r => r.trim());
+  
+  for (const ref of refs) {
+    // Skip empty refs
+    if (!ref) continue;
+    
+    // Skip "HEAD ->" prefix
+    if (ref.startsWith('HEAD -> ')) {
+      const branch = ref.substring('HEAD -> '.length);
+      if (branch && !remoteBranches.includes(branch)) {
+        localBranches.push(branch);
+      }
+      continue;
+    }
+    
+    // Skip tags for now (ISL uses tags differently)
+    if (ref.startsWith('tag: ')) {
+      continue;
+    }
+    
+    // Check if it's a remote branch (contains /)
+    if (ref.includes('/')) {
+      remoteBranches.push(ref);
+    } else {
+      // Local branch
+      if (!localBranches.includes(ref)) {
+        localBranches.push(ref);
+      }
+    }
+  }
+  
+  return {localBranches, remoteBranches};
+}
+
 function transformGitLogToIslFormat(output: string): string {
   // Transform git log --graph output to match ISL's template format
   // ISL uses templates.ts to parse this, so we need to match the expected format
@@ -585,7 +727,7 @@ function createGitFormatForIslTemplate(): string {
     '',                             // remoteBookmarks (empty for now)
     '%P' + NULL_CHAR,               // parents (space-separated, convert to null-separated)
     '',                             // grandparents (not easy to get in git, leave empty)
-    '',                             // isDot (will be @ if this is HEAD, empty otherwise)
+    '',                             // isDot (will be set by markHeadCommit)
     '',                             // files (empty for now, too expensive)
     '0',                            // totalFileCount (0 for now)
     '',                             // successorInfo (git doesn't have mutations)
