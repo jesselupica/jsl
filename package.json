@@ -1,0 +1,41 @@
+{
+  "name": "jsl",
+  "version": "0.1.0",
+  "description": "JSL - Interactive Git SmartLog for single-author feature branch workflows",
+  "private": true,
+  "workspaces": [
+    "jsl-client",
+    "jsl-server",
+    "shared",
+    "components"
+  ],
+  "scripts": {
+    "client": "cd jsl-client && npm start",
+    "server": "cd jsl-server && npm run serve",
+    "build:client": "cd jsl-client && npm run build",
+    "build:server": "cd jsl-server && npm run build",
+    "build": "npm run build:server && npm run build:client",
+    "watch:server": "cd jsl-server && npm run watch",
+    "test": "npm run test --workspaces",
+    "dev": "npm run watch:server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/jsl.git"
+  },
+  "keywords": [
+    "git",
+    "smartlog",
+    "interactive",
+    "git-branchless",
+    "version-control",
+    "ui"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^16.7.13",
+    "typescript": "5.5.4"
+  }
+}
+
