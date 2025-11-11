@@ -20,7 +20,7 @@ import {CLOSED_AND_SHOULD_NOT_RECONNECT_CODE} from '../src/constants';
 import {onClientConnection} from '../src/index';
 import {areTokensEqual} from './proxyUtils';
 
-const ossSmartlogDir = path.join(__dirname, '../../isl');
+const ossSmartlogDir = path.join(__dirname, '../../jsl-client');
 
 export type StartServerArgs = {
   port: number;
