@@ -219,6 +219,17 @@ function translateLogCommand(args: Array<string>, ctx: RepositoryContext): Comma
     }
   }
 
+  // Special case: Fetching changed files for a commit
+  // The template contains file_adds|json which is Sapling-specific
+  if (template && (template.includes('file_adds') || template.includes('file_mods') || template.includes('file_dels'))) {
+    // Use git show --name-status instead of template
+    return {
+      command: 'git',
+      args: ['show', '--name-status', '--format=%H', revset || 'HEAD'],
+      transformOutput: transformGitShowToChangedFilesFormat,
+    };
+  }
+
   // For smartlog-style viewing or any log with template
   // Generate git format that matches ISL's expected template output
   if (!revset || revset.includes('smartlog') || revset.includes('stack') || template) {
@@ -404,17 +415,125 @@ function translateResolveCommand(args: Array<string>): CommandTranslation {
 
 function transformGitStatusToJson(output: string): string {
   // Transform git status --porcelain=v2 to ISL-expected JSON format
-  // This is a simplified version, will need to be expanded
-  const lines = output.split('\n').filter(l => l.trim());
-  const files = lines.map(line => {
+  // Format documentation: https://git-scm.com/docs/git-status#_porcelain_format_version_2
+  
+  const lines = output.split('\n').filter(l => l.trim() && !l.startsWith('#'));
+  const files: Array<{path: string; status: string; renamedFrom?: string}> = [];
+  
+  for (const line of lines) {
     const parts = line.split(' ');
-    return {
-      path: parts[parts.length - 1],
-      status: parts[0],
-    };
-  });
+    const type = parts[0];
+    
+    if (type === '1') {
+      // Ordinary changed entry: 1 <XY> <sub> <mH> <mI> <mW> <hH> <hI> <path>
+      // XY is a 2-char status (index and working tree)
+      // We care about working tree status (second char)
+      const xy = parts[1];
+      const workingTreeStatus = xy[1];
+      const path = parts.slice(8).join(' ');
+      
+      // Map git status chars to ISL status chars
+      const status = mapGitStatusChar(workingTreeStatus);
+      if (status) {
+        files.push({path, status});
+      }
+    } else if (type === '2') {
+      // Renamed/copied entry: 2 <XY> <sub> <mH> <mI> <mW> <hH> <hI> <X><score> <path><sep><origPath>
+      const xy = parts[1];
+      const workingTreeStatus = xy[1];
+      // Path is after the score field, tab-separated for original path
+      const pathPart = parts.slice(9).join(' ');
+      const [path, origPath] = pathPart.split('\t');
+      
+      files.push({
+        path,
+        status: mapGitStatusChar(workingTreeStatus) || 'M',
+        renamedFrom: origPath,
+      });
+    } else if (type === '?') {
+      // Untracked file: ? <path>
+      const path = parts.slice(1).join(' ');
+      files.push({path, status: '?'});
+    } else if (type === '!') {
+      // Ignored file: ! <path>
+      const path = parts.slice(1).join(' ');
+      files.push({path, status: '!'});
+    } else if (type === 'u') {
+      // Unmerged entry: u <XY> <sub> <m1> <m2> <m3> <mW> <h1> <h2> <h3> <path>
+      const path = parts.slice(11).join(' ');
+      files.push({path, status: 'U'}); // U = unresolved conflict
+    }
+  }
   
   return JSON.stringify(files);
+}
+
+/**
+ * Map git status characters to ISL status characters
+ * Git: M (modified), A (added), D (deleted), R (renamed), C (copied), . (unmodified)
+ * ISL: M, A, R, ? (untracked), ! (missing), U (unresolved)
+ */
+function mapGitStatusChar(gitStatus: string): string | null {
+  switch (gitStatus) {
+    case 'M': return 'M'; // Modified
+    case 'A': return 'A'; // Added
+    case 'D': return 'R'; // Deleted (ISL uses R for removed)
+    case 'R': return 'M'; // Renamed (show as modified)
+    case 'C': return 'A'; // Copied (show as added)
+    case '.': return null; // Unmodified (skip)
+    default: return 'M'; // Unknown, treat as modified
+  }
+}
+
+function transformGitShowToChangedFilesFormat(output: string): string {
+  // Transform git show --name-status output to match CHANGED_FILES template format
+  // Expected output format:
+  // Line 0: hash
+  // Line 1: filesAdded (JSON array)
+  // Line 2: filesModified (JSON array)
+  // Line 3: filesRemoved (JSON array)
+  // Line 4: <<COMMIT_END_MARK>>
+  
+  const lines = output.split('\n');
+  const hash = lines[0] || '';
+  
+  const filesAdded: string[] = [];
+  const filesModified: string[] = [];
+  const filesRemoved: string[] = [];
+  
+  // Parse file status lines (skip first line which is the hash)
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    const parts = line.split('\t');
+    if (parts.length < 2) continue;
+    
+    const status = parts[0];
+    const path = parts[parts.length - 1]; // Last part is always the path
+    
+    if (status.startsWith('A')) {
+      filesAdded.push(path);
+    } else if (status.startsWith('M')) {
+      filesModified.push(path);
+    } else if (status.startsWith('D')) {
+      filesRemoved.push(path);
+    } else if (status.startsWith('R')) {
+      // Renamed - treat as modified
+      filesModified.push(path);
+    } else if (status.startsWith('C')) {
+      // Copied - treat as added
+      filesAdded.push(path);
+    }
+  }
+  
+  return [
+    hash,
+    JSON.stringify(filesAdded),
+    JSON.stringify(filesModified),
+    JSON.stringify(filesRemoved),
+    '<<COMMIT_END_MARK>>',
+  ].join('\n');
 }
 
 function transformGitLogToIslFormat(output: string): string {
