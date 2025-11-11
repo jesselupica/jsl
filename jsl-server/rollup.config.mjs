@@ -44,12 +44,16 @@ export default (async () => {
         'process.env.NODE_ENV': isProduction ? '"production"' : '"development"',
         preventAssignment: true,
       }),
-      // Support importing from `isl` and `shared` inside `isl-server`
+      // Support importing from `jsl-client` (renamed from `isl`) and `shared` inside `jsl-server`
       alias({
         entries: [
           {
             find: /^isl/,
-            replacement: path.resolve(projectRootDir, 'isl'),
+            replacement: path.resolve(projectRootDir, 'jsl-client'),
+          },
+          {
+            find: /^jsl-client/,
+            replacement: path.resolve(projectRootDir, 'jsl-client'),
           },
           {
             find: /^shared/,
@@ -61,7 +65,8 @@ export default (async () => {
       esbuild(),
       nodeResolve({preferBuiltins: true, moduleDirectories: ['..', 'node_modules']}),
       cjs(),
-      isProduction && (await import('@rollup/plugin-terser')).default(),
+      // Temporarily disabled terser to debug build issues
+      // isProduction && (await import('@rollup/plugin-terser')).default(),
     ],
   };
 })();

@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import type {TrackErrorName} from 'isl-server/src/analytics/eventNames';
+import type {TrackErrorName} from 'jsl-server/src/analytics/eventNames';
 import type {ReactNode} from 'react';
 import type {MessageBusStatus} from './MessageBus';
 import type {RepoInfo} from './types';

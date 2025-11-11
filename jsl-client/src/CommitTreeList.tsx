@@ -12,7 +12,7 @@ import type {Hash} from './types';
 
 import {Button} from 'isl-components/Button';
 import {ErrorNotice} from 'isl-components/ErrorNotice';
-import {ErrorShortMessages} from 'isl-server/src/constants';
+import {ErrorShortMessages} from 'jsl-server/src/constants';
 import {atom, useAtomValue} from 'jotai';
 import {Commit, InlineProgressSpan} from './Commit';
 import {Center, LargeSpinner} from './ComponentUtils';

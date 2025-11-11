@@ -6,9 +6,9 @@
  */
 
 import type {TypeaheadResult} from 'isl-components/Types';
-import type {TrackEventName} from 'isl-server/src/analytics/eventNames';
-import type {TrackDataWithEventName} from 'isl-server/src/analytics/types';
-import type {GitHubDiffSummary} from 'isl-server/src/github/githubCodeReviewProvider';
+import type {TrackEventName} from 'jsl-server/src/analytics/eventNames';
+import type {TrackDataWithEventName} from 'jsl-server/src/analytics/types';
+import type {GitHubDiffSummary} from 'jsl-server/src/github/githubCodeReviewProvider';
 import type {Comparison} from 'shared/Comparison';
 import type {ParsedDiff} from 'shared/patch/types';
 import type {AllUndefined, Json} from 'shared/typeUtils';

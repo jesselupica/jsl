@@ -5,9 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import type {TrackDataWithEventName} from 'isl-server/src/analytics/types';
+import type {TrackDataWithEventName} from 'jsl-server/src/analytics/types';
 
-import {Tracker} from 'isl-server/src/analytics/tracker';
+import {Tracker} from 'jsl-server/src/analytics/tracker';
 import {Internal} from '../Internal';
 
 /** Client-side global analytics tracker */

@@ -7,7 +7,7 @@
 
 import type {Disposable, MessageBusStatus, PlatformName} from './types';
 
-import {CLOSED_AND_SHOULD_NOT_RECONNECT_CODE} from 'isl-server/src/constants';
+import {CLOSED_AND_SHOULD_NOT_RECONNECT_CODE} from 'jsl-server/src/constants';
 import {logger} from './logger';
 
 export class LocalWebSocketEventBus {

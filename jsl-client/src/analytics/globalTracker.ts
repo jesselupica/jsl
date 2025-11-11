@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import type {Tracker} from 'isl-server/src/analytics/tracker';
+import type {Tracker} from 'jsl-server/src/analytics/tracker';
 
 declare global {
   interface Window {

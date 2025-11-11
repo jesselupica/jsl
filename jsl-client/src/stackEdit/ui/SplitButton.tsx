@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import type {TrackEventName} from 'isl-server/src/analytics/eventNames';
+import type {TrackEventName} from 'jsl-server/src/analytics/eventNames';
 import type {CommitInfo} from '../../types';
 
 import type {Button} from 'isl-components/Button';

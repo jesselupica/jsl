@@ -19,7 +19,7 @@ import type {SyncStatus} from '../syncStatus';
 
 import {Icon} from 'isl-components/Icon';
 import {Tooltip} from 'isl-components/Tooltip';
-import {PullRequestReviewDecision, PullRequestState} from 'isl-server/src/github/generated/graphql';
+import {PullRequestReviewDecision, PullRequestState} from 'jsl-server/src/github/generated/graphql';
 import {MS_PER_DAY} from 'shared/constants';
 import {OSSCommitMessageFieldSchema} from '../../CommitInfoView/OSSCommitMessageFieldsSchema';
 import {Internal} from '../../Internal';

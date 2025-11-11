@@ -61,7 +61,10 @@ export default defineConfig({
       },
     }),
     styleX(),
-    viteTsconfigPaths(),
+    viteTsconfigPaths({
+      // Ignore sapling-upstream directory which has incomplete dependencies
+      ignoreConfigErrors: true,
+    }),
     // The manifest vite generates doesn't include web worker js files.
     // Just output a simple list of all files that are produced,
     // and the server can serve those known files.

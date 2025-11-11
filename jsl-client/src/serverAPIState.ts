@@ -22,7 +22,7 @@ import type {
 } from './types';
 
 import {Set as ImSet} from 'immutable';
-import {DEFAULT_DAYS_OF_COMMITS_TO_LOAD} from 'isl-server/src/constants';
+import {DEFAULT_DAYS_OF_COMMITS_TO_LOAD} from 'jsl-server/src/constants';
 import type {Atom} from 'jotai';
 import {atom} from 'jotai';
 import {reuseEqualObjects} from 'shared/deepEqualExt';

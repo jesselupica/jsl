@@ -5,8 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import type {TrackEventName} from 'isl-server/src/analytics/eventNames';
-import type {TrackData} from 'isl-server/src/analytics/types';
+import type {TrackEventName} from 'jsl-server/src/analytics/eventNames';
+import type {TrackData} from 'jsl-server/src/analytics/types';
 import type {ReactNode} from 'react';
 
 import {useThrottledEffect} from 'shared/hooks';
